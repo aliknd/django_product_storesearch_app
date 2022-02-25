@@ -1,0 +1,207 @@
+{% load static %}
+
+<html lang="en">
+<head>
+    <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.min.css' %}">
+    <link rel="stylesheet" type="text/css" href="{% static 'css/bootstrap.css' %}">
+    <meta charset="UTF-8">
+    <meta http-equiv="X-UA-Compatible" content="IE=edge">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Upload material</title>
+</head>
+
+<body class="bg-dark">
+
+  <!-- Header -->
+  <section class="bg-dark text-light p-5 p-lg-0 pt-lg-5 text-center text-sm-start">
+    <div class="container">
+      <div class="d-sm-flex align-items-center justify-content-between">
+        <div>
+          <h1>Vehicle inspection data <span class="text-info"> By aliknd </span></h1>
+          <p class="lead my-4">
+            JSON file in this page is public vehicle inspection data from Traficom 
+            (Finnish Transport and Communications Agency).
+          </p>
+        </div>
+        <img class="img-fluid w-50 d-none d-sm-block" src="{% static 'img/logo.png' %}" alt=""/>
+      </div>
+    </div>
+  </section>
+
+<div class="container">
+
+<!-- upload section -->
+  <section class="bg-primary text-light p-5 mb-4 mt-4 rounded">
+    <div class="container">
+      <div class="d-md-flex justify-content-between align-items-center">
+        <h3 class="mb-3 mb-md-0">Upload the JSON File</h3>
+        <form action={% url 'process' %} method="post" enctype="multipart/form-data">
+          {% csrf_token %}
+          <div class="input-group">
+              <input type="file" class="form-control" name="document">
+              <button class="btn btn-dark" type="submit">upload</button>
+          </div>
+        </form>
+      </div>
+    </div>
+  </section>
+
+  {% if object_list %}
+
+  <!-- search field -->
+  <section class="w-50 mb-2 mt-2">
+    <h2><span class="text-info"> Vehicle Data </span></h2>
+    <input type="text" class="form-control" id="searchVehicle" placeholder="Search">
+  </section>
+  
+  <!-- static table section -->
+    <div class="static-table">
+      
+        <table class="table table-striped">
+            <thead class="bg-info">
+            <tr>
+                <th scope="col">#</th>
+                <th scope="col">Year</th>
+                <th scope="col">Make</th>
+                <th scope="col">Model</th>
+                <th scope="col">Rejection%</th>
+                <th scope="col">Rejection reason #1</th>
+                <th scope="col">Rejection reason #2</th>
+                <th scope="col">Rejection reason #3</th>
+            </tr>
+            </thead>
+
+            <tbody class="table-dark">
+            {% for citem in object_list %}
+            <tr>
+                <th scope="row">{{ citem.id }}</th>
+                <td>{{ citem.model_year }}</td>
+                <td>{{ citem.make }}</td>
+                <td>{{ citem.model }}</td>
+                <td>{{ citem.rejection_percentage }}</td>
+                <td>{{ citem.reason_1 }}</td>
+                <td>{{ citem.reason_2 }}</td>
+                <td>{{ citem.reason_3 }}</td>
+            </tr>
+            {% endfor %}
+            </tbody>
+
+        </table>
+
+    </div>
+
+    <p class="noquery-results text-info" style="display: none;">There is no results with this query!</p>
+
+    <!-- vanila javascript table section -->
+    <div class="js-table">
+      <table class="table table-striped">
+        <thead class="bg-info">
+          <tr>
+            <th scope="col">#</th>
+            <th scope="col">Year</th>
+            <th scope="col">Make</th>
+            <th scope="col">Model</th>
+            <th scope="col">Rejection%</th>
+            <th scope="col">Rejection reason #1</th>
+            <th scope="col">Rejection reason #2</th>
+            <th scope="col">Rejection reason #3</th>
+          </tr>
+        </thead>
+
+        <tbody  class="table-body  table-dark">
+
+        </tbody>
+      </table>
+    </div>
+
+    <!-- pagination -->
+    <div class="d-flex justify-content-center">
+      <div class="pagination-div">
+
+          <nav aria-label="...">
+              <ul class="pagination">
+              {% if object_list.has_previous %}
+          
+                  <li class="page-item">
+                      <a class="page-link" href="?page=1">&laquo First</a></li>
+                  <li class="page-item">
+                      <a class="page-link" href="?page={{object_list.previous_page_number}}" tabindex="-1">Previous</a></li>
+
+              {% endif %}
+                  <li class="page-item active">
+                      <a class="page-link" href="#">Page {{ object_list.number }} of {{ object_list.paginator.num_pages }}</a></li>
+
+              {% if object_list.has_next %}
+                  <li class="page-item">
+                      <a class="page-link" href="?page={{object_list.next_page_number}}">next</a></li>
+                  <li class="page-item">
+                      <a class="page-link" href="?page={{object_list.paginator.num_pages}}">Last &raquo</a></li>
+              
+              {% endif %}
+              </ul>
+          </nav>
+      </div>
+    </div>
+
+    {% endif %}
+    
+</div>
+
+<!-- js code to receive live search data from DB -->
+<script>
+const searchVehicle = document.querySelector("#searchVehicle");
+const pagination = document.querySelector(".pagination-div");
+const jsTable = document.querySelector(".js-table");
+const staticTable = document.querySelector(".static-table");
+jsTable.style.display = "none";
+const noQueryResult = document.querySelector(".noquery-results");
+const tbody = document.querySelector(".table-body");
+
+searchVehicle.addEventListener("keyup", (e) => {
+  const searchValue = e.target.value;
+
+  if (searchValue.trim().length > 0) {
+    tbody.innerHTML = "";
+    fetch("/search-carsmodel", {
+      body: JSON.stringify({ searchText: searchValue }),
+      method: "POST",
+    })
+      .then((res) => res.json())
+      .then((data) => {
+        console.log("data", data);
+        staticTable.style.display = "none";
+        pagination.style.display = "none";
+        jsTable.style.display = "block";
+
+        console.log("data.length", data.length);
+
+        if (data.length === 0) {
+          noQueryResult.style.display = "block";
+          jsTable.style.display = "none";
+        } else {
+          noQueryResult.style.display = "none";
+          data.forEach((item) => {
+            tbody.innerHTML += `
+                <tr>
+                <th>${item.id}</th>
+                <td>${item.model_year}</td>
+                <td>${item.make}</td>
+                <td>${item.model}</td>
+                <td>${item.rejection_percentage}</td>
+                <td>${item.reason_1}</td>
+                <td>${item.reason_2}</td>
+                <td>${item.reason_3}</td>
+                </tr>`;
+          });
+        }
+      });
+  } else {
+    jsTable.style.display = "none";
+    staticTable.style.display = "block";
+    pagination.style.display = "block";
+  }
+});
+</script>
+
+</body>
+</html>
